@@ -1,0 +1,38 @@
+name: Build Docker image and push static file to webhost
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  
+jobs:
+  build_arlofail_buster:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Build image and generate static files
+        run: |
+          docker build . -f $PWD/Dockerfile -t arlo.fail
+          rm $PWD/Dockerfile $PWD/build.txt
+          docker run --rm --volume=$PWD:/srv/jekyll --volume=$PWD/vendor/bundle:/photo-stream/_site arlo.fail
+      - name: Scan image
+        id: scan
+        uses: sysdiglabs/scan-action@v3
+        with:
+          image-tag: "arlo.fail"
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          input-type: docker-daemon
+          run-as-user: root
+  
+      - name: Sysdig Secure Scan results Debian
+        uses: github/codeql-action/upload-sarif@v1
+        if: always()
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarifReport }}
