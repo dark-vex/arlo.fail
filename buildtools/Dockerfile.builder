@@ -1,5 +1,6 @@
 # Setup builder
-FROM arlo.fail:libvips
+# FROM arlo.fail:libvips
+FROM darkvex/fail-builder:libvips
 
 COPY ./ /photo-stream 
 

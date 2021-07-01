@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build VIPS container
-docker build -f buildtools/Dockerfile.libvips -t arlo.fail:libvips .
+# docker build -f buildtools/Dockerfile.libvips -t arlo.fail:libvips .
 # Build Jekyll container & run it
 docker build -f buildtools/Dockerfile.builder -t arlo.fail:builder .
 docker run --rm --volume="$PWD:/srv/jekyll" --volume="$PWD/vendor/bundle:/photo-stream/_site" arlo.fail:builder
