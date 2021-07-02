@@ -1,4 +1,4 @@
-name: Build Docker image and push static file to webhost
+name: Build multi-arch docker image and push static file to webhost
 
 # Controls when the action will run. 
 on:
@@ -29,38 +29,39 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
 
-      - name: Build image and generate static files
+      - name: Build image
+        id: build
         run: |
-          bash buildtools/builder.sh
-
-      - name: Scan image
-        id: scan
-        uses: sysdiglabs/scan-action@v3
-        with:
-          image-tag: "arlo.fail:nginx"
-          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
-          input-type: docker-daemon
-          run-as-user: root
+          bash buildtools/buildern.sh
 
       # Create a release after a successfull build and image scanning
       - id: release
         uses: rymndhng/release-on-push-action@master
         with:
-          bump_version_scheme: minor
+          bump_version_scheme: patch
           tag_prefix: v
 
       - name: Check Output Parameters
         run: |
           echo "Got tag name ${{ steps.release.outputs.tag_name }}"
           echo "Got release version ${{ steps.release.outputs.version }}"
-  
+
+      - name: Generate static files
+        run: |
+          docker buildx build --push --platform linux/amd64,linux/arm64 -t darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} -f buildtools/Dockerfile.nginx .
+          docker pull darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }}
+
+      - name: Scan image
+        id: scan
+        uses: sysdiglabs/scan-action@v3
+        with:
+          image-tag: "darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }}"
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          input-type: docker-daemon
+          run-as-user: root
+
       - name: Update Scan results
         uses: github/codeql-action/upload-sarif@v1
         if: always()
         with:
           sarif_file: ${{ steps.scan.outputs.sarifReport }}
-
-      - name: Push image
-        run: |
-          docker tag arlo.fail:nginx darkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }}
-          docker push darkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }}
