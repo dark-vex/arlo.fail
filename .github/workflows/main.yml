@@ -1,5 +1,4 @@
-name: Build Docker image and push static file to webhost
-
+name: Build multi-arch image and deploy
 # Controls when the action will run. 
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
@@ -29,58 +28,71 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
 
-      - name: Build image and generate static files
+      - name: Build image
+        id: build
         run: |
           bash buildtools/builder.sh
-
-      - name: Scan image
-        id: scan
-        uses: sysdiglabs/scan-action@v3
-        with:
-          image-tag: "arlo.fail:nginx-amd64"
-          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
-          input-type: docker-daemon
-          run-as-user: root
-
-      - name: Scan image arm
-        id: scan
-        uses: sysdiglabs/scan-action@v3
-        with:
-          image-tag: "arlo.fail:nginx-arm64"
-          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
-          input-type: docker-daemon
-          run-as-user: root
 
       # Create a release after a successfull build and image scanning
       - id: release
         uses: rymndhng/release-on-push-action@master
         with:
-          bump_version_scheme: minor
+          bump_version_scheme: patch
           tag_prefix: v
 
       - name: Check Output Parameters
         run: |
           echo "Got tag name ${{ steps.release.outputs.tag_name }}"
           echo "Got release version ${{ steps.release.outputs.version }}"
+
+      - name: Generate static files
+        run: |
+          docker buildx build --push --platform linux/amd64,linux/arm64 -t darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} -f buildtools/Dockerfile.nginx .
+          echo darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} > image_version.txt
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Save image version
+          path: |
+            image_version.txt
+
+  scan_image:
+    runs-on: ubuntu-latest
+    needs: build_arlofail
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: Save image version
   
+      - name: Generate static files
+        run: |
+          image_version=`cat image_version.txt`
+          docker pull darkvex/fail-builder:arlo-fail-nginx-$(image_version)
+      - name: Scan image
+        id: scan
+        uses: sysdiglabs/scan-action@v3
+        with:
+          image-tag: "darkvex/fail-builder:arlo-fail-nginx-$(image_version)"
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          input-type: docker-daemon
+          run-as-user: root
+
       - name: Update Scan results
         uses: github/codeql-action/upload-sarif@v1
         if: always()
         with:
           sarif_file: ${{ steps.scan.outputs.sarifReport }}
-
-      - name: Push image
-        run: |
-          docker tag arlo.fail:nginx-amd64 darkvex/fail-builder:arlo.fail-amd64-${{ steps.release.outputs.version }}
-          docker tag arlo.fail:nginx-arm64 darkvex/fail-builder:arlo.fail-arm64-${{ steps.release.outputs.version }}
-          docker push darkvex/fail-builder:arlo.fail-amd64-${{ steps.release.outputs.version }}
-          docker push darkvex/fail-builder:arlo.fail-arm64-${{ steps.release.outputs.version }}
-
-      - name: Push image
-        run: |
-          docker manifest create \
-          arkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }} \
-          --amend darkvex/fail-builder:arlo.fail-amd64-${{ steps.release.outputs.version }} \
-          --amend darkvex/fail-builder:arlo.fail-arm64-${{ steps.release.outputs.version }}
-          docker manifest push your-username/multiarch-example:manifest-latest
-
