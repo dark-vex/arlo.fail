@@ -43,7 +43,7 @@ jobs:
           run-as-user: root
 
       - name: Scan image arm
-        id: scan
+        id: scan-arm
         uses: sysdiglabs/scan-action@v3
         with:
           image-tag: "arlo.fail:nginx-arm64"
