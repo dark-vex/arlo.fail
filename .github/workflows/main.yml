@@ -15,16 +15,6 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - id: release
-        uses: rymndhng/release-on-push-action@master
-        with:
-          bump_version_scheme: minor
-          tag_prefix: v
-
-      - name: Check Output Parameters
-        run: |
-          echo "Got tag name ${{ steps.release.outputs.tag_name }}"
-          echo "Got release version ${{ steps.release.outputs.version }}"
 
       # Check out code
       - name: Checkout
@@ -47,10 +37,31 @@ jobs:
         id: scan
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "arlo.fail:nginx"
+          image-tag: "arlo.fail:nginx-amd64"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           input-type: docker-daemon
           run-as-user: root
+
+      - name: Scan image arm
+        id: scan
+        uses: sysdiglabs/scan-action@v3
+        with:
+          image-tag: "arlo.fail:nginx-arm64"
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          input-type: docker-daemon
+          run-as-user: root
+
+      # Create a release after a successfull build and image scanning
+      - id: release
+        uses: rymndhng/release-on-push-action@master
+        with:
+          bump_version_scheme: minor
+          tag_prefix: v
+
+      - name: Check Output Parameters
+        run: |
+          echo "Got tag name ${{ steps.release.outputs.tag_name }}"
+          echo "Got release version ${{ steps.release.outputs.version }}"
   
       - name: Update Scan results
         uses: github/codeql-action/upload-sarif@v1
@@ -60,5 +71,16 @@ jobs:
 
       - name: Push image
         run: |
-          docker tag arlo.fail:nginx darkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }}
-          docker push darkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }}
+          docker tag arlo.fail:nginx-amd64 darkvex/fail-builder:arlo.fail-amd64-${{ steps.release.outputs.version }}
+          docker tag arlo.fail:nginx-arm64 darkvex/fail-builder:arlo.fail-arm64-${{ steps.release.outputs.version }}
+          docker push darkvex/fail-builder:arlo.fail-amd64-${{ steps.release.outputs.version }}
+          docker push darkvex/fail-builder:arlo.fail-arm64-${{ steps.release.outputs.version }}
+
+      - name: Push image
+        run: |
+          docker manifest create \
+          arkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }} \
+          --amend darkvex/fail-builder:arlo.fail-amd64-${{ steps.release.outputs.version }} \
+          --amend darkvex/fail-builder:arlo.fail-arm64-${{ steps.release.outputs.version }}
+          docker manifest push your-username/multiarch-example:manifest-latest
+
