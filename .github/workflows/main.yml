@@ -43,7 +43,7 @@ jobs:
           run-as-user: root
 
       - name: Scan image arm
-        id: scan
+        id: scan-arm
         uses: sysdiglabs/scan-action@v3
         with:
           image-tag: "arlo.fail:nginx-arm64"
@@ -79,8 +79,8 @@ jobs:
       - name: Push image
         run: |
           docker manifest create \
-          arkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }} \
+          darkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }} \
           --amend darkvex/fail-builder:arlo.fail-amd64-${{ steps.release.outputs.version }} \
           --amend darkvex/fail-builder:arlo.fail-arm64-${{ steps.release.outputs.version }}
-          docker manifest push your-username/multiarch-example:manifest-latest
+          docker manifest push darkvex/fail-builder:arlo.fail-${{ steps.release.outputs.version }}
 
