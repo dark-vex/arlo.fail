@@ -48,14 +48,14 @@ jobs:
       - name: Generate static files
         run: |
           docker buildx build --push --platform linux/amd64,linux/arm64 -t darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} -t darkvex/fail-builder:arlo-fail-nginx -f buildtools/Dockerfile.nginx .
-          echo darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} > image_version.txt
+        #  echo darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} > image_version.txt
 
-      - name: Archive artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: Save image version
-          path: |
-            image_version.txt
+      #- name: Archive artifacts
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: Save image version
+      #    path: |
+      #      image_version.txt
 
   scan_image:
     runs-on: ubuntu-latest
@@ -73,10 +73,10 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
 
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: Save image version
+      #- name: Download artifact
+      #  uses: actions/download-artifact@v2
+      #  with:
+      #    name: Save image version
   
       - name: Generate static files
         run: |
