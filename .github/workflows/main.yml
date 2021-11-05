@@ -47,15 +47,7 @@ jobs:
 
       - name: Generate static files
         run: |
-          docker buildx build --push --platform linux/amd64,linux/arm64 -t darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} -t darkvex/fail-builder:arlo-fail-nginx -f buildtools/Dockerfile.nginx .
-        #  echo darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} > image_version.txt
-
-      #- name: Archive artifacts
-      #  uses: actions/upload-artifact@v2
-      #  with:
-      #    name: Save image version
-      #    path: |
-      #      image_version.txt
+          docker buildx build --push --platform linux/amd64,linux/arm64 -t docker.io/darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }} -t docker.io/darkvex/fail-builder:arlo-fail-nginx -f buildtools/Dockerfile.nginx .
 
   scan_image:
     runs-on: ubuntu-latest
@@ -80,12 +72,12 @@ jobs:
   
       - name: Generate static files
         run: |
-          docker pull darkvex/fail-builder:arlo-fail-nginx
+          docker pull docker.io/darkvex/fail-builder:arlo-fail-nginx
       - name: Scan image
         id: scan
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "darkvex/fail-builder:arlo-fail-nginx"
+          image-tag: "docker.io/darkvex/fail-builder:arlo-fail-nginx"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           input-type: docker-daemon
           run-as-user: root
