@@ -87,3 +87,27 @@ jobs:
         if: always()
         with:
           sarif_file: ${{ steps.scan.outputs.sarifReport }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: scan_image
+    steps:
+      - name: Run playbook on Ansible Tower
+        # You may pin to the exact commit or the version.
+        # uses: vortegon/github-action-ansible-tower@f8da53fc7ea0e66e3011ed1182e3b1f3a60a48e7
+        uses: vortegon/github-action-ansible-tower@v1.0.5
+        with:
+          # Ansible Tower User
+          ansible-tower-user: ${{ secrets.ANSIBLE_USER }}
+          # Ansible Tower Password
+          ansible-tower-pass: ${{ secrets.ANSIBLE_PASSWORD }}
+          # Ansible Tower URL
+          ansible-tower-url: ${{ secrets.ANSIBLE_URL }}
+          # Extra vars required by the ansible playbook
+          additional-vars: |
+            {
+              "docker_image": "docker.io/darkvex/fail-builder:arlo-fail-nginx-${{ steps.release.outputs.version }}"
+              "service_name": "${{ secrets.SERVICE_NAME }}"
+            }
+          # Template id on Ansible Tower
+          template-id: "32"
