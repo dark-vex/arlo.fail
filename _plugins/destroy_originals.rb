@@ -29,3 +29,4 @@ end
 Jekyll::Hooks.register :site, :post_write do |page|
   Jekyll::DestroyOriginals.destroy
 end
+
