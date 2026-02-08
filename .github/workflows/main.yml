@@ -75,7 +75,7 @@ jobs:
           docker pull docker.io/darkvex/fail-builder:arlo-fail-nginx
       - name: Scan image
         id: scan
-        uses: sysdiglabs/scan-action@v4
+        uses: sysdiglabs/scan-action@v6
         with:
           image-tag: "docker.io/darkvex/fail-builder:arlo-fail-nginx"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
