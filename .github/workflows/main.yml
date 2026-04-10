@@ -73,20 +73,23 @@ jobs:
       - name: Generate static files
         run: |
           docker pull docker.io/darkvex/fail-builder:arlo-fail-nginx
-      - name: Scan image
-        id: scan
-        uses: sysdiglabs/scan-action@v6
-        with:
-          image-tag: "docker.io/darkvex/fail-builder:arlo-fail-nginx"
-          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
-          input-type: docker-daemon
-          run-as-user: root
 
-      - name: Update Scan results
+      - name: Image Scan
+        id: scan
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+        run: |
+          curl -Lo wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
+          chmod +x wizcli
+          ./wizcli scan container-image docker.io/darkvex/fail-builder:arlo-fail-nginx --sarif-output-file=sarif.json
+
+      - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v4
+        #Upload SARIF file
         if: success() || failure()
         with:
-          sarif_file: ${{ steps.scan.outputs.sarifReport }}
+          sarif_file: ${{ github.workspace }}/sarif.json
 
 #  deploy:
 #    runs-on: ubuntu-latest
